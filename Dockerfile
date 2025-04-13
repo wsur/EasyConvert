@@ -8,7 +8,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Копируем решение и проект
-COPY ["EasyConvert2/EasyConvert2.csproj", "EasyConvert2/"]
+COPY ["EasyConvert2.csproj", "EasyConvert2/"]
 COPY ["EasyConvert2.sln", "./"]
 
 # Выполняем восстановление зависимостей
@@ -18,7 +18,7 @@ RUN dotnet restore "EasyConvert2/EasyConvert2.csproj"
 COPY . .
 
 # Строим проект
-WORKDIR "/src/EasyConvert2"
+WORKDIR "EasyConvert2"
 RUN dotnet build "EasyConvert2.csproj" -c Release -o /app/build
 
 # Публикуем приложение
