@@ -68,7 +68,7 @@ namespace EasyConvert2
 			var token = configuration["TelegramBot:Token"]
 				?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
 
-			Console.WriteLine("TOKEN: " + (token?.Substring(0, 5) ?? "null"));
+			Console.WriteLine("TOKEN: " + (!string.IsNullOrEmpty(token) ? token[..Math.Min(5, token.Length)] : "null"));
 
 			botClient = new TelegramBotClient(token);
 
