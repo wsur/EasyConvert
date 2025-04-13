@@ -19,8 +19,46 @@ namespace EasyConvert2
 		private static readonly TelegramBotClient botClient;
 		private static readonly ILogger<Program> logger;
 
+		public static IHostBuilder CreateHostBuilder(string[] args) =>
+		Host.CreateDefaultBuilder(args)
+		.ConfigureWebHostDefaults(webBuilder =>
+		{
+			// Конфигурация веб-приложения
+			webBuilder.ConfigureServices(services =>
+			{
+				// Регистрация сервисов
+				services.AddControllersWithViews(); // Пример: добавляем поддержку MVC
+			})
+			.Configure((context, app) =>
+			{
+				// Конфигурация pipeline обработки запросов
+				if (context.HostingEnvironment.IsDevelopment())
+				{
+					app.UseDeveloperExceptionPage(); // Страница ошибок в режиме разработки
+				}
+				else
+				{
+					app.UseExceptionHandler("/Home/Error"); // Обработка ошибок в продакшн
+					app.UseHsts();
+				}
+
+				app.UseHttpsRedirection();
+				app.UseStaticFiles();
+				app.UseRouting();
+
+				// Настройка маршрутов
+				app.UseEndpoints(endpoints =>
+				{
+					endpoints.MapControllerRoute(
+						name: "default",
+						pattern: "{controller=Home}/{action=Index}/{id?}");
+				});
+			});
+		});
+
 		static Program()
 		{
+
 			var configuration = new ConfigurationBuilder()
 				.SetBasePath(Directory.GetCurrentDirectory())
 				.AddJsonFile("appsettings.json")
@@ -43,25 +81,29 @@ namespace EasyConvert2
 			}).CreateLogger<Program>();
 		}
 
-		static async Task Main(string[] args)
+			public static async Task Main(string[] args)
 		{
-			var cts = new CancellationTokenSource();
+			// Создание и запуск хоста для ASP.NET
+			var host = CreateHostBuilder(args).Build();
 
-			// Используем ReceiverOptions для конфигурации получения обновлений
+			// Запуск Telegram бота в отдельном потоке
+			var cts = new CancellationTokenSource();
 			var receiverOptions = new ReceiverOptions
 			{
 				AllowedUpdates = [UpdateType.Message] // Принимаем только сообщения
 			};
 
 			// Запуск получения обновлений в отдельном потоке
-			botClient.StartReceiving(
-				updateHandler: BotClient_OnUpdate,
-				errorHandler: BotClient_OnError,
-				receiverOptions: receiverOptions,
-				cancellationToken: cts.Token
-			);
+			_ = Task.Run(() =>
+			{
+				botClient.StartReceiving(
+					updateHandler: BotClient_OnUpdate,
+					errorHandler: BotClient_OnError,
+					receiverOptions: receiverOptions,
+					cancellationToken: cts.Token
+				);
+			});
 
-			// Логируем старт бота
 			logger.LogInformation("Бот запущен. Нажмите Ctrl+C для остановки...");
 
 			// Ожидаем нажатие Ctrl+C для завершения работы
@@ -73,9 +115,11 @@ namespace EasyConvert2
 				logger.LogInformation("Бот остановлен пользователем.");
 			};
 
-			await tcs.Task; // Ждём завершения работы
+			// Запускаем веб-приложение и ждём завершения
+			await host.RunAsync();
 
-			cts.Cancel(); // Завершаем получение обновлений
+			// Завершаем получение обновлений после остановки
+			cts.Cancel();
 			logger.LogInformation("Бот остановлен.");
 		}
 
