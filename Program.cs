@@ -60,10 +60,10 @@ namespace EasyConvert2
 		{
 
 			var configuration = new ConfigurationBuilder()
-				.SetBasePath(Directory.GetCurrentDirectory())
-				.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
 				.AddEnvironmentVariables()
+				.AddJsonFile("appsettings.json", optional: true)
 				.Build();
+
 
 			var token = configuration["TelegramBot:Token"]
 				?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
