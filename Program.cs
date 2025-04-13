@@ -61,11 +61,15 @@ namespace EasyConvert2
 
 			var configuration = new ConfigurationBuilder()
 				.SetBasePath(Directory.GetCurrentDirectory())
-				.AddJsonFile("appsettings.json")
+				.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+				.AddEnvironmentVariables()
 				.Build();
 
-			// Вытаскиваем токен из переменной окружения для безопасности
-			var token = configuration["TelegramBot:Token"] ?? throw new InvalidOperationException("Токен бота не найден в переменных окружения");
+			var token = configuration["TelegramBot:Token"]
+				?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
+
+			Console.WriteLine("TOKEN: " + (token?.Substring(0, 5) ?? "null"));
+
 			botClient = new TelegramBotClient(token);
 
 			// Настройка Serilog
