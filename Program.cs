@@ -59,7 +59,7 @@ namespace EasyConvert2
 
 		static Program()
 		{
-			Console.OutputEncoding = System.Text.Encoding.UTF8;
+			Console.OutputEncoding = System.Text.Encoding.Unicode;
 
 			foreach (var (key, value) in Environment.GetEnvironmentVariables().Cast<DictionaryEntry>())
 			{
@@ -81,7 +81,7 @@ namespace EasyConvert2
 			// Настройка Serilog
 			Log.Logger = new LoggerConfiguration()
 				.WriteTo.Console()  // Логирование в консоль (пакет Serilog.Sinks.Console)
-				.WriteTo.File("app.log", rollingInterval: RollingInterval.Day, encoding: System.Text.Encoding.UTF8)  // Логирование в файл
+				.WriteTo.File("app.log", rollingInterval: RollingInterval.Day, encoding: System.Text.Encoding.Unicode)  // Логирование в файл
 				.CreateLogger();
 
 			// Используем Serilog для логирования
