@@ -13,6 +13,7 @@ namespace EasyConvert2
 	using System.IO;
 	using System.Threading;
 	using System.Threading.Tasks;
+	using System.Collections;
 
 	class Program
 	{
@@ -58,10 +59,13 @@ namespace EasyConvert2
 
 		static Program()
 		{
+			foreach (var (key, value) in Environment.GetEnvironmentVariables().Cast<DictionaryEntry>())
+			{
+				Console.WriteLine($"{key} = {value}");
+			}
 
 			var configuration = new ConfigurationBuilder()
 				.AddEnvironmentVariables()
-				.AddJsonFile("appsettings.json", optional: true)
 				.Build();
 
 
