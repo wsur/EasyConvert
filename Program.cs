@@ -175,8 +175,9 @@ class Program
 			outputStream.Seek(0, SeekOrigin.Begin);
 
 			var fileToSend = new InputFileStream(outputStream, "converted_image.jpg");
-
 			await botClient.SendPhoto(chatId, fileToSend, cancellationToken: token);
+			await botClient.SendDocument(chatId, fileToSend, caption: L("Вот ваше изображение без сжатия.", "Here is your uncompressed image."), cancellationToken: token);
+
 
 			logger.LogInformation(L("Фото успешно обработано и отправлено.", "Photo processed and sent."));
 
