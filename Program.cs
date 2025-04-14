@@ -195,20 +195,37 @@ class Program
 			await botClient.SendMessage(chatId, L("Изображение получено, обрабатываю...", "Image received, processing..."), cancellationToken: token);
 
 			using var image = SixLabors.ImageSharp.Image.Load(imageStream);
-			using var outputStream = new MemoryStream();
 
-			image.Save(outputStream, new JpegEncoder
+			// Первый поток — для SendPhoto
+			using var photoStream = new MemoryStream();
+
+			image.Save(photoStream, new JpegEncoder
 			{
-				Quality = 75 // Можно варьировать от 30 до 95
+				Quality = 100
 			});
 
-			outputStream.Seek(0, SeekOrigin.Begin);
-			var compressedFile = new InputFileStream(outputStream, fileName);
+			photoStream.Seek(0, SeekOrigin.Begin);
+			var photoToSend = new InputFileStream(photoStream, fileName);
+			await botClient.SendPhoto(
+				chatId: chatId,
+				photo: photoToSend,
+				caption: L("Вот ваше изображение со сжатием.", "Here is your compressed image."),
+				cancellationToken: token
+			);
 
+			// Второй поток — для SendDocument
+			using var docStream = new MemoryStream();
+
+			image.Save(docStream, new JpegEncoder
+			{
+				Quality = 100
+			});
+			docStream.Seek(0, SeekOrigin.Begin);
+			var docToSend = new InputFileStream(docStream, fileName);
 			await botClient.SendDocument(
 				chatId: chatId,
-				document: compressedFile,
-				caption: L("Вот изображение после пересжатия.", "Here is your compressed image."),
+				document: docToSend,
+				caption: L("Вот ваше изображение без сжатия.", "Here is your uncompressed image."),
 				cancellationToken: token
 			);
 
