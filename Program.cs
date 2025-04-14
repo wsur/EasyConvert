@@ -169,14 +169,25 @@ class Program
 			downloadStream.Seek(0, SeekOrigin.Begin);
 
 			using var image = SixLabors.ImageSharp.Image.Load(downloadStream);
-			using var outputStream = new MemoryStream();
 
-			image.Save(outputStream, new JpegEncoder());
-			outputStream.Seek(0, SeekOrigin.Begin);
+			// Первый поток — для SendPhoto
+			using var photoStream = new MemoryStream();
+			image.Save(photoStream, new JpegEncoder());
+			photoStream.Seek(0, SeekOrigin.Begin);
+			var photoToSend = new InputFileStream(photoStream, "converted_image.jpg");
+			await botClient.SendPhoto(chatId, photoToSend, cancellationToken: token);
 
-			var fileToSend = new InputFileStream(outputStream, "converted_image.jpg");
-			await botClient.SendPhoto(chatId, fileToSend, cancellationToken: token);
-			await botClient.SendDocument(chatId, fileToSend, caption: L("Вот ваше изображение без сжатия.", "Here is your uncompressed image."), cancellationToken: token);
+			// Второй поток — для SendDocument
+			using var docStream = new MemoryStream();
+			image.Save(docStream, new JpegEncoder());
+			docStream.Seek(0, SeekOrigin.Begin);
+			var docToSend = new InputFileStream(docStream, "converted_image.jpg");
+			await botClient.SendDocument(
+				chatId: chatId,
+				document: docToSend,
+				caption: L("Вот ваше изображение без сжатия.", "Here is your uncompressed image."),
+				cancellationToken: token
+			);
 
 
 			logger.LogInformation(L("Фото успешно обработано и отправлено.", "Photo processed and sent."));
