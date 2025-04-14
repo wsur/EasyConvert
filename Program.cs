@@ -8,12 +8,15 @@ namespace EasyConvert2
 	using SixLabors.ImageSharp.Formats.Jpeg;
 	using Microsoft.Extensions.Configuration;
 	using Microsoft.Extensions.Logging;
+	using Microsoft.AspNetCore.Hosting;
+	using Microsoft.Extensions.Hosting;
 	using Serilog;
 	using System;
 	using System.IO;
 	using System.Threading;
 	using System.Threading.Tasks;
 	using System.Collections;
+	using System.Linq;
 
 	class Program
 	{
@@ -21,41 +24,46 @@ namespace EasyConvert2
 		private static readonly ILogger<Program> logger;
 
 		public static IHostBuilder CreateHostBuilder(string[] args) =>
-		Host.CreateDefaultBuilder(args)
-		.ConfigureWebHostDefaults(webBuilder =>
-		{
-			// Конфигурация веб-приложения
-			webBuilder.ConfigureServices(services =>
-			{
-				// Регистрация сервисов
-				services.AddControllersWithViews(); // Пример: добавляем поддержку MVC
-			})
-			.Configure((context, app) =>
-			{
-				// Конфигурация pipeline обработки запросов
-				if (context.HostingEnvironment.IsDevelopment())
+			Host.CreateDefaultBuilder(args)
+				.ConfigureWebHostDefaults(webBuilder =>
 				{
-					app.UseDeveloperExceptionPage(); // Страница ошибок в режиме разработки
-				}
-				else
-				{
-					app.UseExceptionHandler("/Home/Error"); // Обработка ошибок в продакшн
-					app.UseHsts();
-				}
+					// Указываем адрес и порт для Render
+					webBuilder.UseUrls($"http://0.0.0.0:{GetPort()}");
 
-				app.UseHttpsRedirection();
-				app.UseStaticFiles();
-				app.UseRouting();
+					webBuilder.ConfigureServices(services =>
+					{
+						services.AddControllersWithViews();
+					})
+					.Configure((context, app) =>
+					{
+						if (context.HostingEnvironment.IsDevelopment())
+						{
+							app.UseDeveloperExceptionPage();
+						}
+						else
+						{
+							app.UseExceptionHandler("/Home/Error");
+							app.UseHsts();
+						}
 
-				// Настройка маршрутов
-				app.UseEndpoints(endpoints =>
-				{
-					endpoints.MapControllerRoute(
-						name: "default",
-						pattern: "{controller=Home}/{action=Index}/{id?}");
+						app.UseHttpsRedirection();
+						app.UseStaticFiles();
+						app.UseRouting();
+
+						app.UseEndpoints(endpoints =>
+						{
+							endpoints.MapControllerRoute(
+								name: "default",
+								pattern: "{controller=Home}/{action=Index}/{id?}");
+						});
+					});
 				});
-			});
-		});
+
+		private static string GetPort()
+		{
+			var port = Environment.GetEnvironmentVariable("PORT");
+			return string.IsNullOrEmpty(port) ? "8080" : port;
+		}
 
 		static Program()
 		{
@@ -70,7 +78,6 @@ namespace EasyConvert2
 				.AddEnvironmentVariables()
 				.Build();
 
-
 			var token = configuration["TelegramBot:Token"]
 				?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
 
@@ -78,32 +85,27 @@ namespace EasyConvert2
 
 			botClient = new TelegramBotClient(token);
 
-			// Настройка Serilog
 			Log.Logger = new LoggerConfiguration()
-				.WriteTo.Console()  // Логирование в консоль (пакет Serilog.Sinks.Console)
-				.WriteTo.File("app.log", rollingInterval: RollingInterval.Day, encoding: System.Text.Encoding.Unicode)  // Логирование в файл
+				.WriteTo.Console()
+				.WriteTo.File("app.log", rollingInterval: RollingInterval.Day, encoding: System.Text.Encoding.Unicode)
 				.CreateLogger();
 
-			// Используем Serilog для логирования
 			logger = LoggerFactory.Create(builder =>
 			{
-				builder.AddSerilog(); // Добавляем Serilog как логер
+				builder.AddSerilog();
 			}).CreateLogger<Program>();
 		}
 
-			public static async Task Main(string[] args)
+		public static async Task Main(string[] args)
 		{
-			// Создание и запуск хоста для ASP.NET
 			var host = CreateHostBuilder(args).Build();
 
-			// Запуск Telegram бота в отдельном потоке
 			var cts = new CancellationTokenSource();
 			var receiverOptions = new ReceiverOptions
 			{
-				AllowedUpdates = [UpdateType.Message] // Принимаем только сообщения
+				AllowedUpdates = [UpdateType.Message]
 			};
 
-			// Запуск получения обновлений в отдельном потоке
 			_ = Task.Run(() =>
 			{
 				botClient.StartReceiving(
@@ -116,7 +118,6 @@ namespace EasyConvert2
 
 			logger.LogInformation("Бот запущен. Нажмите Ctrl+C для остановки...");
 
-			// Ожидаем нажатие Ctrl+C для завершения работы
 			var tcs = new TaskCompletionSource();
 			Console.CancelKeyPress += (_, e) =>
 			{
@@ -125,10 +126,8 @@ namespace EasyConvert2
 				logger.LogInformation("Бот остановлен пользователем.");
 			};
 
-			// Запускаем веб-приложение и ждём завершения
 			await host.RunAsync();
 
-			// Завершаем получение обновлений после остановки
 			cts.Cancel();
 			logger.LogInformation("Бот остановлен.");
 		}
@@ -146,9 +145,10 @@ namespace EasyConvert2
 			return Task.CompletedTask;
 		}
 
-		private static async Task BotClient_OnUpdate(ITelegramBotClient client,
-												  Update update,
-												  CancellationToken token)
+		private static async Task BotClient_OnUpdate(
+			ITelegramBotClient client,
+			Update update,
+			CancellationToken token)
 		{
 			if (update.Type != UpdateType.Message || update.Message?.Type != MessageType.Photo)
 				return;
@@ -165,8 +165,7 @@ namespace EasyConvert2
 					return;
 				}
 
-				// Проверка на размер файла
-				if (photo.FileSize > 10 * 1024 * 1024) // 10 MB
+				if (photo.FileSize > 10 * 1024 * 1024)
 				{
 					await botClient.SendMessage(chatId, "Извините, файл слишком большой. Максимальный размер — 10 МБ.", cancellationToken: token);
 					return;
@@ -174,14 +173,9 @@ namespace EasyConvert2
 
 				var file = await botClient.GetFile(photo.FileId, cancellationToken: token);
 
-				// Проверка на null и скачивание файла
 				using var downloadStream = new MemoryStream();
-				await botClient.DownloadFile(
-					file.FilePath ?? throw new InvalidOperationException("file.FilePath is null"),
-					downloadStream,
-					token);
+				await botClient.DownloadFile(file.FilePath ?? throw new InvalidOperationException("file.FilePath is null"), downloadStream, token);
 
-				// Сообщаем пользователю, что обработка началась
 				await botClient.SendMessage(chatId, "Фотография получена, обрабатываю...", cancellationToken: token);
 
 				downloadStream.Seek(0, SeekOrigin.Begin);
@@ -194,16 +188,12 @@ namespace EasyConvert2
 
 				var fileToSend = new InputFileStream(outputStream, "converted_image.jpg");
 
-				await botClient.SendPhoto(
-					chatId,
-					fileToSend,
-					cancellationToken: token);
+				await botClient.SendPhoto(chatId, fileToSend, cancellationToken: token);
 
 				Console.WriteLine("Фото успешно обработано и отправлено пользователю.");
 			}
 			catch (Exception ex)
 			{
-				// Логируем ошибку
 				Console.WriteLine($"Ошибка при обработке фото: {ex.Message}");
 				await botClient.SendMessage(chatId, "Ошибка при обработке фотографии. Попробуйте снова.", cancellationToken: token);
 				logger.LogError($"Ошибка при обработке фото: {ex.Message}");
