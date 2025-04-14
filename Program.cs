@@ -114,11 +114,17 @@ class Program
 			logger.LogInformation(L("Бот остановлен пользователем.", "Bot stopped by user."));
 		};
 
-		await host.RunAsync();
+		await host.StartAsync(); // просто запускаем хост, но не ждём завершения
+
+		await tcs.Task; // ждём Ctrl+C
 
 		cts.Cancel();
+
+		await host.StopAsync(); // корректно останавливаем хост
+
 		logger.LogInformation(L("Бот остановлен.", "Bot stopped."));
 	}
+
 
 	private static Task BotClient_OnError(
 		ITelegramBotClient client,
