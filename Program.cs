@@ -13,40 +13,49 @@ class Program
 	private static readonly ILogger<Program> logger;
 
 	public static IHostBuilder CreateHostBuilder(string[] args) =>
-		Host.CreateDefaultBuilder(args)
-			.ConfigureWebHostDefaults(webBuilder =>
+	Host.CreateDefaultBuilder(args)
+		.ConfigureWebHostDefaults(webBuilder =>
+		{
+			webBuilder.UseUrls($"http://0.0.0.0:{GetPort()}");
+
+			webBuilder.ConfigureServices((context, services) =>
 			{
-				webBuilder.UseUrls($"http://0.0.0.0:{GetPort()}");
+				var configuration = context.Configuration;
+				var token = configuration["TelegramBot:Token"]
+					?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
 
-				webBuilder.ConfigureServices(services =>
+				services.AddControllersWithViews();
+
+				services.AddSingleton<ITelegramBotClient>(_ =>
+					new TelegramBotClient(token));
+			})
+			.Configure((context, app) =>
+			{
+				var isDevelopment = context.HostingEnvironment.IsDevelopment();
+
+				if (isDevelopment)
+					app.UseDeveloperExceptionPage();
+				else
 				{
-					services.AddControllersWithViews();
-				})
-				.Configure((context, app) =>
+					app.UseExceptionHandler("/Home/Error");
+					app.UseHsts();
+				}
+
+				app.UseHttpsRedirection();
+				app.UseStaticFiles();
+				app.UseRouting();
+
+				app.UseEndpoints(endpoints =>
 				{
-					var isDevelopment = context.HostingEnvironment.IsDevelopment();
+					endpoints.MapControllerRoute(
+						name: "default",
+						pattern: "{controller=Home}/{action=Index}/{id?}");
 
-					if (isDevelopment)
-						app.UseDeveloperExceptionPage();
-					else
-					{
-						app.UseExceptionHandler("/Home/Error");
-						app.UseHsts();
-					}
-
-					app.UseHttpsRedirection();
-					app.UseStaticFiles();
-					app.UseRouting();
-
-					app.UseEndpoints(endpoints =>
-					{
-						endpoints.MapControllerRoute(
-							name: "default",
-							pattern: "{controller=Home}/{action=Index}/{id?}");
-						endpoints.MapControllers(); // чтобы заработал [Route("api/update")] в TelegramBotController
-					});
+					endpoints.MapControllers();
 				});
 			});
+		});
+
 
 	private static string GetPort()
 	{
@@ -67,15 +76,6 @@ class Program
 		var configuration = new ConfigurationBuilder()
 			.AddEnvironmentVariables()
 			.Build();
-
-		WebApplicationBuilder builder = WebApplication.CreateBuilder();
-
-		builder.Services.AddSingleton<ITelegramBotClient>(provider =>
-		{
-			var configuration = provider.GetRequiredService<IConfiguration>();
-			var token = configuration["TelegramBot:Token"]; // Убедись, что он указан в appsettings.json или переменной среды
-			return new TelegramBotClient(token);
-		});
 
 		var token = configuration["TelegramBot:Token"]
 			?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
