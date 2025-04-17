@@ -4,6 +4,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using ImageMagick;
 
 namespace EasyConvert2.Controllers
 {
@@ -50,10 +51,33 @@ namespace EasyConvert2.Controllers
 						return await Reply(chatId, "Файл слишком большой. Максимум — 10 МБ.", cancellationToken);
 
 					var file = await _botClient.GetFile(message.Document.FileId, cancellationToken);
-					imageStream = new MemoryStream();
-					await _botClient.DownloadFile(file.FilePath!, imageStream, cancellationToken);
-					imageStream.Seek(0, SeekOrigin.Begin);
-					fileName = "compressed_from_document.jpg";
+					var originalStream = new MemoryStream();
+					await _botClient.DownloadFile(file.FilePath!, originalStream, cancellationToken);
+					originalStream.Seek(0, SeekOrigin.Begin);
+
+					// Определим MIME-типа
+					var mimeType = message.Document.MimeType;
+
+					if (mimeType == "image/heic" || mimeType == "image/heif")
+					{
+						try
+						{
+							// Преобразуем HEIC/HEIF в JPEG
+							imageStream = ConvertHeicToJpeg(originalStream);
+							fileName = "converted_from_heic.jpg";
+						}
+						catch (Exception ex)
+						{
+							_logger.LogError(ex, "Ошибка при конвертации HEIC изображения.");
+							return await Reply(chatId, "Ошибка при конвертации HEIC изображения. Попробуйте другой формат.", cancellationToken);
+						}
+					}
+					else
+					{
+						// Если не HEIC — просто передаём оригинал
+						imageStream = originalStream;
+						fileName = "compressed_from_document.jpg";
+					}
 				}
 				else
 				{
@@ -99,6 +123,20 @@ namespace EasyConvert2.Controllers
 			await _botClient.SendMessage(chatId, message, cancellationToken: token);
 			return Ok();
 		}
+
+		public static MemoryStream ConvertHeicToJpeg(Stream heicStream)
+		{
+			using var image = new MagickImage(heicStream);
+			image.Format = MagickFormat.Jpeg;
+			image.Quality = 100;
+
+			var output = new MemoryStream();
+			image.Write(output);
+			output.Seek(0, SeekOrigin.Begin);
+
+			return output;
+		}
+
 
 		private string L(string ru, string en)
 			=> _environment == "Development" ? ru : en;
