@@ -9,18 +9,11 @@ namespace EasyConvert2.Controllers
 {
 	[ApiController]
 	[Route("api/update")]
-	public class TelegramController : ControllerBase
+	public class TelegramController(ITelegramBotClient botClient, ILogger<TelegramController> logger, IWebHostEnvironment env) : ControllerBase
 	{
-		private readonly ITelegramBotClient _botClient;
-		private readonly ILogger<TelegramController> _logger;
-		private readonly string _environment;
-
-		public TelegramController(ITelegramBotClient botClient, ILogger<TelegramController> logger, IWebHostEnvironment env)
-		{
-			_botClient = botClient;
-			_logger = logger;
-			_environment = env.EnvironmentName;
-		}
+		private readonly ITelegramBotClient _botClient = botClient;
+		private readonly ILogger<TelegramController> _logger = logger;
+		private readonly string _environment = env.EnvironmentName;
 
 		[HttpPost]
 		public async Task<IActionResult> Post([FromBody] Update update, CancellationToken cancellationToken)

@@ -69,8 +69,13 @@ class Program
 			.Build();
 
 		WebApplicationBuilder builder = WebApplication.CreateBuilder();
-		builder.Services.AddSingleton<ITelegramBotClient>(_ =>
-			new TelegramBotClient(configuration["TelegramBot:Token"]));
+
+		builder.Services.AddSingleton<ITelegramBotClient>(provider =>
+		{
+			var configuration = provider.GetRequiredService<IConfiguration>();
+			var token = configuration["TelegramBot:Token"]; // Убедись, что он указан в appsettings.json или переменной среды
+			return new TelegramBotClient(token);
+		});
 
 		var token = configuration["TelegramBot:Token"]
 			?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
