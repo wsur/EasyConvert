@@ -144,7 +144,7 @@ class Program
 	}
 
 
-	private static Task BotClient_OnError(
+	/*private static Task BotClient_OnError(
 		ITelegramBotClient client,
 		Exception exception,
 		HandleErrorSource source,
@@ -157,6 +157,7 @@ class Program
 		return Task.CompletedTask;
 	}
 
+	
 	private static async Task BotClient_OnUpdate(
 	ITelegramBotClient client,
 	Update update,
@@ -261,7 +262,7 @@ class Program
 			await botClient.SendMessage(chatId, L("Ошибка при обработке изображения. Попробуйте снова.", "Error during processing. Try again."), cancellationToken: token);
 			logger.LogError($"{L("Ошибка при обработке изображения", "Image processing error")}: {ex}");
 		}
-	}
+	}*/
 
 
 	private static string L(string ru, string en) => Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" ? ru : en;
