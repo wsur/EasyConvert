@@ -43,6 +43,7 @@ class Program
 						endpoints.MapControllerRoute(
 							name: "default",
 							pattern: "{controller=Home}/{action=Index}/{id?}");
+						endpoints.MapControllers(); // чтобы заработал [Route("api/update")] в TelegramBotController
 					});
 				});
 			});
@@ -62,9 +63,14 @@ class Program
 			Console.WriteLine($"{key} = {value}");
 		}
 
+
 		var configuration = new ConfigurationBuilder()
 			.AddEnvironmentVariables()
 			.Build();
+
+		WebApplicationBuilder builder = WebApplication.CreateBuilder();
+		builder.Services.AddSingleton<ITelegramBotClient>(_ =>
+			new TelegramBotClient(configuration["TelegramBot:Token"]));
 
 		var token = configuration["TelegramBot:Token"]
 			?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
@@ -88,13 +94,14 @@ class Program
 	{
 		var host = CreateHostBuilder(args).Build();
 
+
 		var cts = new CancellationTokenSource();
 		var receiverOptions = new ReceiverOptions
 		{
 			AllowedUpdates = [UpdateType.Message]
 		};
 
-		_ = Task.Run(() =>
+/*		_ = Task.Run(() =>
 		{
 			botClient.StartReceiving(
 				updateHandler: BotClient_OnUpdate,
@@ -102,7 +109,7 @@ class Program
 				receiverOptions: receiverOptions,
 				cancellationToken: cts.Token
 			);
-		});
+		});*/
 
 		logger.LogInformation(L("Бот запущен. Нажмите Ctrl+C для остановки...", "Bot started. Press Ctrl+C to stop..."));
 
@@ -115,6 +122,17 @@ class Program
 		};
 
 		await host.StartAsync(); // просто запускаем хост, но не ждём завершения
+
+		// Устанавливаем Webhook
+		var baseUrl = Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL")
+					 ?? throw new Exception("RENDER_EXTERNAL_URL не задан");
+
+		var webhookUrl = $"{baseUrl}/api/update";
+
+		await botClient.SetWebhook(webhookUrl);
+
+		logger.LogInformation("Webhook установлен: " + webhookUrl);
+
 
 		await tcs.Task; // ждём Ctrl+C
 
