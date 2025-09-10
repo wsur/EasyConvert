@@ -1,20 +1,25 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using EasyConvert2.Validation.Classes;
+using EasyConvert2.Validation.Interfaces;
+using ImageMagick;
+using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using ImageMagick;
 
 namespace EasyConvert2.Controllers
 {
 	[ApiController]
 	[Route("api/update")]
-	public class TelegramController(ITelegramBotClient botClient, ILogger<TelegramController> logger, IWebHostEnvironment env) : ControllerBase
+	public class TelegramController(ITelegramBotClient botClient, ILogger<TelegramController> logger, IWebHostEnvironment env, IImageValidator imageValidator) : ControllerBase
 	{
 		private readonly ITelegramBotClient _botClient = botClient;
 		private readonly ILogger<TelegramController> _logger = logger;
 		private readonly string _environment = env.EnvironmentName;
+		private readonly IImageValidator ImageValidator = imageValidator;
+
+		private string ErrorMessage = null;
 
 		[HttpPost]
 		public async Task<IActionResult> Post([FromBody] Update update, CancellationToken cancellationToken)
@@ -36,8 +41,8 @@ namespace EasyConvert2.Controllers
 					if (photo is null)
 						return await Reply(chatId, "Ошибка: не удалось получить фото.", cancellationToken);
 
-					if (photo.FileSize > 10 * 1024 * 1024)
-						return await Reply(chatId, "Файл слишком большой. Максимум — 10 МБ.", cancellationToken);
+					if(ImageValidator.ValidateSize(photo.FileSize, out ErrorMessage) is false)
+						return await Reply(chatId, ErrorMessage, cancellationToken);
 
 					var file = await _botClient.GetFile(photo.FileId, cancellationToken);
 					imageStream = new MemoryStream();
@@ -45,10 +50,13 @@ namespace EasyConvert2.Controllers
 					imageStream.Seek(0, SeekOrigin.Begin);
 					fileName = "compressed_from_photo.jpg";
 				}
-				else if (message.Type == MessageType.Document && message.Document?.MimeType?.StartsWith("image/") == true)
+				else if (message.Type == MessageType.Document)
 				{
-					if (message.Document.FileSize > 10 * 1024 * 1024)
-						return await Reply(chatId, "Файл слишком большой. Максимум — 10 МБ.", cancellationToken);
+					if(ImageValidator.ValidateMimeType(message.Document?.MimeType, out ErrorMessage) is false)
+						return await Reply(chatId, ErrorMessage, cancellationToken);
+
+					if (ImageValidator.ValidateSize(message.Document.FileSize, out ErrorMessage) is false)
+						return await Reply(chatId, ErrorMessage, cancellationToken);
 
 					var file = await _botClient.GetFile(message.Document.FileId, cancellationToken);
 					var originalStream = new MemoryStream();
