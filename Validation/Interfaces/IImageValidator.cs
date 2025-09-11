@@ -3,6 +3,6 @@
 	public interface IImageValidator
 	{
 		bool ValidateSize(long? fileSize, out string errorMessage);
-		bool ValidateMimeType(string mimeType, out string errorMessage);
+		bool ValidateMimeType(string? mimeType, out string errorMessage);
 	}
 }

@@ -55,7 +55,7 @@ namespace EasyConvert2.Controllers
 					if(ImageValidator.ValidateMimeType(message.Document?.MimeType, out ErrorMessage) is false)
 						return await Reply(chatId, ErrorMessage, cancellationToken);
 
-					if (ImageValidator.ValidateSize(message.Document.FileSize, out ErrorMessage) is false)
+					if (ImageValidator.ValidateSize(message.Document!.FileSize, out ErrorMessage) is false)
 						return await Reply(chatId, ErrorMessage, cancellationToken);
 
 					var file = await _botClient.GetFile(message.Document.FileId, cancellationToken);
