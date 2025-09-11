@@ -1,9 +1,7 @@
-﻿using EasyConvert2.Validation.Classes;
+using EasyConvert2.Convertations.Classes;
 using EasyConvert2.Validation.Interfaces;
 using ImageMagick;
 using Microsoft.AspNetCore.Mvc;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -19,7 +17,8 @@ namespace EasyConvert2.Controllers
 		private readonly string _environment = env.EnvironmentName;
 		private readonly IImageValidator ImageValidator = imageValidator;
 
-		private string ErrorMessage = null;
+		private string? ErrorMessage = null;
+
 
 		[HttpPost]
 		public async Task<IActionResult> Post([FromBody] Update update, CancellationToken cancellationToken)
@@ -35,57 +34,60 @@ namespace EasyConvert2.Controllers
 				Stream? imageStream = null;
 				string fileName;
 
+				var converter = new ConverterContext();
+
 				switch (message.Type)
 				{
 					case MessageType.Photo:
-							var photo = message.Photo?.LastOrDefault();
-							if (photo is null)
-								return await Reply(chatId, "Ошибка: не удалось получить фото.", cancellationToken);
+						var photo = message.Photo?.LastOrDefault();
+						if (photo is null)
+							return await Reply(chatId, "Ошибка: не удалось получить фото.", cancellationToken);
 
-							if (ImageValidator.ValidateSize(photo.FileSize, out ErrorMessage) is false)
-								return await Reply(chatId, ErrorMessage, cancellationToken);
+						if (ImageValidator.ValidateSize(photo.FileSize, out ErrorMessage) is false)
+							return await Reply(chatId, ErrorMessage, cancellationToken);
 
-							var file = await _botClient.GetFile(photo.FileId, cancellationToken);
-							imageStream = new MemoryStream();
-							await _botClient.DownloadFile(file.FilePath!, imageStream, cancellationToken);
-							imageStream.Seek(0, SeekOrigin.Begin);
-							fileName = "compressed_from_photo.jpg";
+						var file = await _botClient.GetFile(photo.FileId, cancellationToken);
+						imageStream = new MemoryStream();
+						await _botClient.DownloadFile(file.FilePath!, imageStream, cancellationToken);
+						imageStream.Seek(0, SeekOrigin.Begin);
+						fileName = "compressed_from_photo.jpg";
 						break;
 					case MessageType.Document:
-							if (ImageValidator.ValidateMimeType(message.Document?.MimeType, out ErrorMessage) is false)
-								return await Reply(chatId, ErrorMessage, cancellationToken);
+						if (ImageValidator.ValidateMimeType(message.Document?.MimeType, out ErrorMessage) is false)
+							return await Reply(chatId, ErrorMessage, cancellationToken);
 
-							if (ImageValidator.ValidateSize(message.Document!.FileSize, out ErrorMessage) is false)
-								return await Reply(chatId, ErrorMessage, cancellationToken);
+						if (ImageValidator.ValidateSize(message.Document!.FileSize, out ErrorMessage) is false)
+							return await Reply(chatId, ErrorMessage, cancellationToken);
 
-							file = await _botClient.GetFile(message.Document.FileId, cancellationToken);
-							var originalStream = new MemoryStream();
-							await _botClient.DownloadFile(file.FilePath!, originalStream, cancellationToken);
-							originalStream.Seek(0, SeekOrigin.Begin);
+						file = await _botClient.GetFile(message.Document.FileId, cancellationToken);
+						var originalStream = new MemoryStream();
+						await _botClient.DownloadFile(file.FilePath!, originalStream, cancellationToken);
+						originalStream.Seek(0, SeekOrigin.Begin);
 
-							// Определим MIME-типа
-							var mimeType = message.Document.MimeType;
+						// Определим MIME-типа
+						var mimeType = message.Document.MimeType;
 
-							if (mimeType == "image/heic" || mimeType == "image/heif")
+						if (mimeType == "image/heic" || mimeType == "image/heif")
+						{
+							converter.InstallConverter(new HeicToJpgImageConverter());
+							try
 							{
-								try
-								{
-									// Преобразуем HEIC/HEIF в JPEG
-									imageStream = ConvertHeicToJpeg(originalStream);
-									fileName = "converted_from_heic.jpg";
-								}
-								catch (Exception ex)
-								{
-									_logger.LogError(ex, "Ошибка при конвертации HEIC изображения.");
-									return await Reply(chatId, "Ошибка при конвертации HEIC изображения. Попробуйте другой формат.", cancellationToken);
-								}
+								// Преобразуем HEIC/HEIF в JPEG
+								imageStream = converter.Convert(originalStream, mimeType, out ErrorMessage);
+								fileName = "converted_from_heic.jpg";
 							}
-							else
+							catch (Exception ex)
 							{
-								// Если не HEIC — просто передаём оригинал
-								imageStream = originalStream;
-								fileName = "compressed_from_document.jpg";
+								_logger.LogError(ex, ErrorMessage);
+								return await Reply(chatId, ErrorMessage!, cancellationToken);
 							}
+						}
+						else
+						{
+							// Если не HEIC — просто передаём оригинал
+							imageStream = originalStream;
+							fileName = "compressed_from_document.jpg";
+						}
 						break;
 					default:
 						return await Reply(chatId, "Пожалуйста, пришлите изображение как фото или файл.", cancellationToken);
@@ -98,6 +100,7 @@ namespace EasyConvert2.Controllers
 				using var photoStream = new MemoryStream();
 				image.Save(photoStream, new JpegEncoder { Quality = 100 });
 				photoStream.Seek(0, SeekOrigin.Begin);
+
 				await _botClient.SendPhoto(chatId, new InputFileStream(photoStream, fileName),
 					caption: L("Вот ваше изображение со сжатием.", "Here is your compressed image."),
 					cancellationToken: cancellationToken);
@@ -105,6 +108,7 @@ namespace EasyConvert2.Controllers
 				using var docStream = new MemoryStream();
 				image.Save(docStream, new JpegEncoder { Quality = 100 });
 				docStream.Seek(0, SeekOrigin.Begin);
+
 				await _botClient.SendDocument(chatId, new InputFileStream(docStream, fileName),
 					caption: L("Вот ваше изображение без сжатия.", "Here is your uncompressed image."),
 					cancellationToken: cancellationToken);
@@ -129,19 +133,6 @@ namespace EasyConvert2.Controllers
 		{
 			await _botClient.SendMessage(chatId, message, cancellationToken: token);
 			return Ok();
-		}
-
-		public static MemoryStream ConvertHeicToJpeg(Stream heicStream)
-		{
-			using var image = new MagickImage(heicStream);
-			image.Format = MagickFormat.Jpeg;
-			image.Quality = 100;
-
-			var output = new MemoryStream();
-			image.Write(output);
-			output.Seek(0, SeekOrigin.Begin);
-
-			return output;
 		}
 
 
