@@ -1,7 +1,8 @@
 using EasyConvert2.Convertations.Classes;
 using EasyConvert2.Validation.Interfaces;
-using ImageMagick;
 using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
