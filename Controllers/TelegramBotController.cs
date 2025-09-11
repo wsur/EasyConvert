@@ -1,4 +1,4 @@
-﻿using EasyConvert2.Convertations.Classes;
+using EasyConvert2.Convertations.Classes;
 using EasyConvert2.Validation.Interfaces;
 using ImageMagick;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +18,7 @@ namespace EasyConvert2.Controllers
 		private readonly IImageValidator ImageValidator = imageValidator;
 
 		private string? ErrorMessage = null;
+
 
 		[HttpPost]
 		public async Task<IActionResult> Post([FromBody] Update update, CancellationToken cancellationToken)
