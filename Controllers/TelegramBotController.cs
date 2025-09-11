@@ -35,61 +35,60 @@ namespace EasyConvert2.Controllers
 				Stream? imageStream = null;
 				string fileName;
 
-				if (message.Type == MessageType.Photo)
+				switch (message.Type)
 				{
-					var photo = message.Photo?.LastOrDefault();
-					if (photo is null)
-						return await Reply(chatId, "Ошибка: не удалось получить фото.", cancellationToken);
+					case MessageType.Photo:
+							var photo = message.Photo?.LastOrDefault();
+							if (photo is null)
+								return await Reply(chatId, "Ошибка: не удалось получить фото.", cancellationToken);
 
-					if(ImageValidator.ValidateSize(photo.FileSize, out ErrorMessage) is false)
-						return await Reply(chatId, ErrorMessage, cancellationToken);
+							if (ImageValidator.ValidateSize(photo.FileSize, out ErrorMessage) is false)
+								return await Reply(chatId, ErrorMessage, cancellationToken);
 
-					var file = await _botClient.GetFile(photo.FileId, cancellationToken);
-					imageStream = new MemoryStream();
-					await _botClient.DownloadFile(file.FilePath!, imageStream, cancellationToken);
-					imageStream.Seek(0, SeekOrigin.Begin);
-					fileName = "compressed_from_photo.jpg";
-				}
-				else if (message.Type == MessageType.Document)
-				{
-					if(ImageValidator.ValidateMimeType(message.Document?.MimeType, out ErrorMessage) is false)
-						return await Reply(chatId, ErrorMessage, cancellationToken);
+							var file = await _botClient.GetFile(photo.FileId, cancellationToken);
+							imageStream = new MemoryStream();
+							await _botClient.DownloadFile(file.FilePath!, imageStream, cancellationToken);
+							imageStream.Seek(0, SeekOrigin.Begin);
+							fileName = "compressed_from_photo.jpg";
+						break;
+					case MessageType.Document:
+							if (ImageValidator.ValidateMimeType(message.Document?.MimeType, out ErrorMessage) is false)
+								return await Reply(chatId, ErrorMessage, cancellationToken);
 
-					if (ImageValidator.ValidateSize(message.Document.FileSize, out ErrorMessage) is false)
-						return await Reply(chatId, ErrorMessage, cancellationToken);
+							if (ImageValidator.ValidateSize(message.Document!.FileSize, out ErrorMessage) is false)
+								return await Reply(chatId, ErrorMessage, cancellationToken);
 
-					var file = await _botClient.GetFile(message.Document.FileId, cancellationToken);
-					var originalStream = new MemoryStream();
-					await _botClient.DownloadFile(file.FilePath!, originalStream, cancellationToken);
-					originalStream.Seek(0, SeekOrigin.Begin);
+							file = await _botClient.GetFile(message.Document.FileId, cancellationToken);
+							var originalStream = new MemoryStream();
+							await _botClient.DownloadFile(file.FilePath!, originalStream, cancellationToken);
+							originalStream.Seek(0, SeekOrigin.Begin);
 
-					// Определим MIME-типа
-					var mimeType = message.Document.MimeType;
+							// Определим MIME-типа
+							var mimeType = message.Document.MimeType;
 
-					if (mimeType == "image/heic" || mimeType == "image/heif")
-					{
-						try
-						{
-							// Преобразуем HEIC/HEIF в JPEG
-							imageStream = ConvertHeicToJpeg(originalStream);
-							fileName = "converted_from_heic.jpg";
-						}
-						catch (Exception ex)
-						{
-							_logger.LogError(ex, "Ошибка при конвертации HEIC изображения.");
-							return await Reply(chatId, "Ошибка при конвертации HEIC изображения. Попробуйте другой формат.", cancellationToken);
-						}
-					}
-					else
-					{
-						// Если не HEIC — просто передаём оригинал
-						imageStream = originalStream;
-						fileName = "compressed_from_document.jpg";
-					}
-				}
-				else
-				{
-					return await Reply(chatId, "Пожалуйста, пришлите изображение как фото или файл.", cancellationToken);
+							if (mimeType == "image/heic" || mimeType == "image/heif")
+							{
+								try
+								{
+									// Преобразуем HEIC/HEIF в JPEG
+									imageStream = ConvertHeicToJpeg(originalStream);
+									fileName = "converted_from_heic.jpg";
+								}
+								catch (Exception ex)
+								{
+									_logger.LogError(ex, "Ошибка при конвертации HEIC изображения.");
+									return await Reply(chatId, "Ошибка при конвертации HEIC изображения. Попробуйте другой формат.", cancellationToken);
+								}
+							}
+							else
+							{
+								// Если не HEIC — просто передаём оригинал
+								imageStream = originalStream;
+								fileName = "compressed_from_document.jpg";
+							}
+						break;
+					default:
+						return await Reply(chatId, "Пожалуйста, пришлите изображение как фото или файл.", cancellationToken);
 				}
 
 				await Reply(chatId, "Изображение получено, обрабатываю...", cancellationToken);

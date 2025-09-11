@@ -13,9 +13,14 @@ namespace EasyConvert2.Validation.Classes
 		private const long maxFileSize = 10 * 1024 * 1024;// 10 мб в байтах
 		private const int maxFileSizeInMB = 10;
 
-		public bool ValidateMimeType(string mimeType, out string errorMessage)
+		public bool ValidateMimeType(string? mimeType, out string errorMessage)
 		{
-			if (!allowedMimeTypes.Contains(mimeType.ToLower()))
+			if(mimeType is null)
+			{
+				errorMessage = $"No Image file type is provided. Allowed formats: {String.Join(", ", allowedMimeTypes)}";
+				return false;
+			}
+			if (!allowedMimeTypes.Contains(mimeType!.ToLower()))
 			{
 				errorMessage = $"Image file type is not supported: {mimeType}. Allowed formats: {String.Join(", ", allowedMimeTypes)}";
 				return false;
