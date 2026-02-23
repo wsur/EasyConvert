@@ -84,10 +84,18 @@ class Program
 			.AddEnvironmentVariables()
 			.Build();
 
-		var token = configuration["TelegramBot:Token"]
-			?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
+		var token = "";
 
-		Console.WriteLine("TOKEN: " + (!string.IsNullOrEmpty(token) ? token[..Math.Min(5, token.Length)] : "null"));
+#if DEBUG
+		var builder = WebApplication.CreateBuilder();
+
+        token = builder.Configuration["TelegramBot:Token"];
+#else
+		token = configuration["TelegramBot:Token"]
+			?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
+#endif
+
+        Console.WriteLine("TOKEN: " + (!string.IsNullOrEmpty(token) ? token[..Math.Min(5, token.Length)] : "null"));
 
 		botClient = new TelegramBotClient(token);
 
