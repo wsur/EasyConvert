@@ -11,12 +11,12 @@ namespace EasyConvert2.Controllers
 {
 	[ApiController]
 	[Route("api/update")]
-	public class TelegramController(ITelegramBotClient botClient, ILogger<TelegramController> logger, IWebHostEnvironment env, IImageValidator imageValidator) : ControllerBase
+	public class TelegramController(ITelegramBotClient botClient, ILogger<TelegramController> logger, IWebHostEnvironment env, IFileValidator imageValidator) : ControllerBase
 	{
 		private readonly ITelegramBotClient _botClient = botClient;
 		private readonly ILogger<TelegramController> _logger = logger;
 		private readonly string _environment = env.EnvironmentName;
-		private readonly IImageValidator ImageValidator = imageValidator;
+		private readonly IFileValidator ImageValidator = imageValidator;
 
 		private string? ErrorMessage = null;
 

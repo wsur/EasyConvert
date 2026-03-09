@@ -2,7 +2,7 @@
 
 namespace EasyConvert2.Validation.Classes
 {
-	public class ImageValidator : IImageValidator
+	public class ImageValidator : IFileValidator
 	{
 		private static readonly HashSet<string> allowedMimeTypes = [
 			"image/heic",

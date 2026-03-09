@@ -33,7 +33,7 @@ class Program
 
 				////////////////////////////регистрация самописных классов////////////////////////////////////
 				
-				services.AddSingleton<IImageValidator, ImageValidator>();//валидация для фотографий
+				services.AddSingleton<IFileValidator, ImageValidator>();//валидация для фотографий
 
 			})
 			.Configure((context, app) =>
