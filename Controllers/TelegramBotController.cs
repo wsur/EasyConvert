@@ -39,10 +39,9 @@ namespace EasyConvert2.Controllers
                 if (update.Message != null)
                 {
 
-
-
-                    if (update.Type != UpdateType.Message || update.Message is not { } message)
-                        return Ok();
+                    /*if (update.Type != UpdateType.Message || update.Message is not { } message)
+                        return Ok();*/
+                    var message = update.Message;
 
                     var chatId = message.Chat.Id;
                     Console.WriteLine($"Image from @{message.From?.Username} (ID: {message.From?.Id})");
@@ -133,10 +132,10 @@ namespace EasyConvert2.Controllers
 
                     _logger.LogInformation(L("Изображение успешно пересжато и отправлено.", "Image compressed and sent."));
                 }
-                if(update.CallbackQuery != null)
+                if (update.CallbackQuery != null)
                 {
                     var calbackquery = update.CallbackQuery;
-                    await _botClient.AnswerCallbackQuery(calbackquery.Id);
+                    await _botClient.AnswerCallbackQuery(calbackquery.Id, cancellationToken: cancellationToken);
 
                     var data = calbackquery.Data;
 
@@ -144,14 +143,14 @@ namespace EasyConvert2.Controllers
                     {
                         case "scale_2":
                             await _botClient.SendMessage(
-                                calbackquery.Message.Chat.Id,
-                                "Вы выбрали увеличение 2x");
+                                calbackquery.Message!.Chat.Id,
+                                L("Вы выбрали увеличение 2x", "You've chosed 2x upscale"));
                             break;
 
                         case "scale_4":
                             await _botClient.SendMessage(
-                                calbackquery.Message.Chat.Id,
-                                "Вы выбрали увеличение 4x");
+                                calbackquery.Message!.Chat.Id,
+                                L("Вы выбрали увеличение 4x", "You've chosed 4x upscale"));
                             break;
                     }
                 }
