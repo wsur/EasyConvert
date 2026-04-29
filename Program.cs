@@ -24,16 +24,16 @@ class Program
 			{
 				var configuration = context.Configuration;
 				var token = configuration["TelegramBot:Token"]
-					?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
+					?? throw new InvalidOperationException("TelegramBot:Token was not found in configuration");
 
 				services.AddControllersWithViews();
 
 				services.AddSingleton<ITelegramBotClient>(_ =>
 					new TelegramBotClient(token));
 
-				////////////////////////////регистрация самописных классов////////////////////////////////////
+				////////////////////////////Custom services registration////////////////////////////////////
 				
-				services.AddSingleton<IFileValidator, ImageValidator>();//валидация для фотографий
+				services.AddSingleton<IFileValidator, ImageValidator>();//image validation
 
 
 
@@ -94,7 +94,7 @@ class Program
         token = builder.Configuration["TelegramBot:Token"];
 #else
 		token = configuration["TelegramBot:Token"]
-			?? throw new InvalidOperationException("TelegramBot:Token не найден в конфигурации");
+			?? throw new InvalidOperationException("TelegramBot:Token was not found in configuration");
 #endif
 
         Console.WriteLine("TOKEN: " + (!string.IsNullOrEmpty(token) ? token[..Math.Min(5, token.Length)] : "null"));
@@ -123,36 +123,38 @@ class Program
 			AllowedUpdates = [UpdateType.Message]
 		};
 
-		logger.LogInformation(L("Бот запущен. Нажмите Ctrl+C для остановки...", "Bot started. Press Ctrl+C to stop..."));
+		logger.LogInformation("Bot started. Press Ctrl+C to stop...");
 
 		var tcs = new TaskCompletionSource();
 		Console.CancelKeyPress += (_, e) =>
 		{
 			e.Cancel = true;
 			tcs.SetResult();
-			logger.LogInformation(L("Бот остановлен пользователем.", "Bot stopped by user."));
+			logger.LogInformation("Bot stopped by user.");
 		};
 
-		await host.StartAsync(); // просто запускаем хост, но не ждём завершения
+		await host.StartAsync(); // Start the host without blocking.
 
-		// Устанавливаем Webhook
+		// Set webhook.
 		var baseUrl = Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL")
-					 ?? throw new Exception("RENDER_EXTERNAL_URL не задан");
+					 ?? throw new Exception("RENDER_EXTERNAL_URL is not set");
 
 		var webhookUrl = $"{baseUrl}/api/update";
 
-		await botClient.SetWebhook(webhookUrl);
+		await botClient.SetWebhook(
+			url: webhookUrl,
+			allowedUpdates: [UpdateType.Message, UpdateType.CallbackQuery]);
 
-		logger.LogInformation("Webhook установлен: " + webhookUrl);
+		logger.LogInformation("Webhook was set: " + webhookUrl);
 
 
-		await tcs.Task; // ждём Ctrl+C
+		await tcs.Task; // Wait for Ctrl+C.
 
 		cts.Cancel();
 
-		await host.StopAsync(); // корректно останавливаем хост
+		await host.StopAsync(); // Stop the host gracefully.
 
-		logger.LogInformation(L("Бот остановлен.", "Bot stopped."));
+		logger.LogInformation("Bot stopped.");
 	}
 
 

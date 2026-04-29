@@ -134,24 +134,27 @@ namespace EasyConvert2.Controllers
                 }
                 if (update.CallbackQuery != null)
                 {
-                    var calbackquery = update.CallbackQuery;
-                    await _botClient.AnswerCallbackQuery(calbackquery.Id, cancellationToken: cancellationToken);
+                    var callbackQuery = update.CallbackQuery;
+                    var chatId = callbackQuery.Message?.Chat.Id;
 
-                    var data = calbackquery.Data;
-
-                    switch (data)
+                    var replyMessage = callbackQuery.Data switch
                     {
-                        case "scale_2":
-                            await _botClient.SendMessage(
-                                calbackquery.Message!.Chat.Id,
-                                L("Вы выбрали увеличение 2x", "You've chosed 2x upscale"));
-                            break;
+                        "scale_2" => L("Вы выбрали увеличение 2x", "You selected 2x upscale"),
+                        "scale_4" => L("Вы выбрали увеличение 4x", "You selected 4x upscale"),
+                        _ => L("Неизвестное действие.", "Unknown action.")
+                    };
 
-                        case "scale_4":
-                            await _botClient.SendMessage(
-                                calbackquery.Message!.Chat.Id,
-                                L("Вы выбрали увеличение 4x", "You've chosed 4x upscale"));
-                            break;
+                    await _botClient.AnswerCallbackQuery(
+                        callbackQuery.Id,
+                        text: replyMessage,
+                        cancellationToken: cancellationToken);
+
+                    if (chatId is not null)
+                    {
+                        await _botClient.SendMessage(
+                            chatId,
+                            replyMessage,
+                            cancellationToken: cancellationToken);
                     }
                 }
             }
