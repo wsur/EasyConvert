@@ -35,6 +35,8 @@ class Program
 				
 				services.AddSingleton<IFileValidator, ImageValidator>();//валидация для фотографий
 
+
+
 			})
 			.Configure((context, app) =>
 			{
