@@ -9,6 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="EasyConvert2.Tests\**" />
+    <Content Remove="EasyConvert2.Tests\**" />
+    <EmbeddedResource Remove="EasyConvert2.Tests\**" />
+    <None Remove="EasyConvert2.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.13.0" />
     <PackageReference Include="Serilog" Version="4.3.1" />
 	  <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
