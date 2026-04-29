@@ -34,6 +34,7 @@ class Program
 				////////////////////////////Custom services registration////////////////////////////////////
 				
 				services.AddSingleton<IFileValidator, ImageValidator>();//image validation
+				services.AddMemoryCache();
 
 
 
