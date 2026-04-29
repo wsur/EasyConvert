@@ -85,17 +85,17 @@ namespace EasyConvert2.Controllers
                             if (mimeType == "image/heic" || mimeType == "image/heif")
                             {
                                 converter.InstallConverter(new HeicToJpgImageConverter());
-                                try
+                                // Преобразуем HEIC/HEIF в JPEG
+                                imageStream = converter.Convert(originalStream, mimeType, out ErrorMessage);
+                                if (imageStream == Stream.Null || !string.IsNullOrWhiteSpace(ErrorMessage))
                                 {
-                                    // Преобразуем HEIC/HEIF в JPEG
-                                    imageStream = converter.Convert(originalStream, mimeType, out ErrorMessage);
-                                    fileName = "converted_from_heic.jpg";
+                                    _logger.LogWarning("HEIC conversion failed: {ErrorMessage}", ErrorMessage);
+                                    return await Reply(chatId,
+                                        ErrorMessage ?? "Не удалось конвертировать HEIC изображение. Попробуйте другой формат.",
+                                        cancellationToken);
                                 }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex, ErrorMessage);
-                                    return await Reply(chatId, ErrorMessage!, cancellationToken);
-                                }
+
+                                fileName = "converted_from_heic.jpg";
                             }
                             else
                             {

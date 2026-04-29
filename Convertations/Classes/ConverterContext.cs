@@ -4,7 +4,7 @@ namespace EasyConvert2.Convertations.Classes
 {
 	public class ConverterContext
 	{
-		public IImageConverter ImageConverter { private get; set; }
+		public IImageConverter? ImageConverter { private get; set; }
 
 		public void InstallConverter(IImageConverter imageConverter)
 		{
@@ -13,6 +13,12 @@ namespace EasyConvert2.Convertations.Classes
 
 		public Stream Convert(Stream inputStream, string mimeType, out string? ErrorMessage)
 		{
+			if (ImageConverter is null)
+			{
+				ErrorMessage = "Не найден конвертер для данного файла.";
+				return Stream.Null;
+			}
+
 			if (ImageConverter.CanConvert(mimeType))
 			{
 				return ImageConverter.Convert(inputStream, out ErrorMessage);

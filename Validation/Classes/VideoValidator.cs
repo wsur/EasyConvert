@@ -9,7 +9,7 @@ namespace EasyConvert2.Validation.Classes
         /// </summary>
         private const int MaxFileSizeInMb = 20;
 
-        private const int MaxFileSize = 20 * 1024 * 10424;
+        private const long MaxFileSize = MaxFileSizeInMb * 1024L * 1024L;
 
         /// <summary>
         /// поддерживаемые типы видео у телеграм ботов
@@ -25,12 +25,12 @@ namespace EasyConvert2.Validation.Classes
         {
             if (mimeType is null)
             {
-                errorMessage = $"No Image file type is provided. Allowed formats: {String.Join(", ", allowedMimeTypes)}";
+                errorMessage = $"No video file type is provided. Allowed formats: {String.Join(", ", allowedMimeTypes)}";
                 return false;
             }
-            if (!allowedMimeTypes.Contains(mimeType!.ToLower()))
+            if (!allowedMimeTypes.Contains(mimeType.ToLowerInvariant()))
             {
-                errorMessage = $"Image file type is not supported: {mimeType}. Allowed formats: {String.Join(", ", allowedMimeTypes)}";
+                errorMessage = $"Video file type is not supported: {mimeType}. Allowed formats: {String.Join(", ", allowedMimeTypes)}";
                 return false;
             }
 
@@ -41,7 +41,7 @@ namespace EasyConvert2.Validation.Classes
 
         public bool ValidateSize(long? fileSize, out string errorMessage)
         {
-            if (fileSize <= 0)
+            if (fileSize is null or <= 0)
             {
                 errorMessage = "Файл пустой.";
                 return false;

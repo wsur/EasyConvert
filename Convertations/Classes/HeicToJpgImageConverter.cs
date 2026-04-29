@@ -32,7 +32,7 @@ namespace EasyConvert2.Convertations.Classes
 			catch (Exception)
 			{
 				//не передаём и не сохраняем ошибку, которая выпала. Выдаём только кастомную.
-				ErrorMessage = "Ошибка при конвертации HEIC изображения. Попробуйте другой формат.";
+				ErrorMessage = "Не удалось конвертировать HEIC/HEIF изображение. Попробуйте отправить файл в другом формате.";
 				return Stream.Null;
 			}
 		}
