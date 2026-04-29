@@ -8,6 +8,7 @@ public class ScaleKeyboardFactoryTests
     [InlineData("scale_2:abc", "scale_2", "abc", 2, "2x")]
     [InlineData("scale_4:abc", "scale_4", "abc", 4, "4x")]
     [InlineData("scale_down:abc", "scale_down", "abc", 0.5, "0.5x")]
+    [InlineData("video_scale_down:abc", "video_scale_down", "abc", 0.5, "0.5x")]
     public void TryParse_ReturnsCommand_ForValidCallbackData(
         string callbackData,
         string expectedAction,
@@ -59,5 +60,32 @@ public class ScaleKeyboardFactoryTests
         Assert.Equal("scale_4:operation-id", buttons[1].CallbackData);
         Assert.Equal("0.5x", buttons[2].Text);
         Assert.Equal("scale_down:operation-id", buttons[2].CallbackData);
+    }
+
+    [Fact]
+    public void CreateVideo_BuildsKeyboard_WithVideoCallbackData()
+    {
+        var factory = new ScaleKeyboardFactory();
+
+        var keyboard = factory.CreateVideo("operation-id");
+        var buttonRows = keyboard.InlineKeyboard.ToArray();
+        var buttons = buttonRows[0].ToArray();
+
+        Assert.Single(buttonRows);
+        Assert.Single(buttons);
+        Assert.Equal("0.5x", buttons[0].Text);
+        Assert.Equal("video_scale_down:operation-id", buttons[0].CallbackData);
+    }
+
+    [Fact]
+    public void TryParse_ReturnsVideoCommand_ForVideoCallbackData()
+    {
+        var factory = new ScaleKeyboardFactory();
+
+        var result = factory.TryParse("video_scale_down:operation-id", out var command);
+
+        Assert.True(result);
+        Assert.True(command.IsVideo);
+        Assert.Equal("operation-id", command.OperationId);
     }
 }

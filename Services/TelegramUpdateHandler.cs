@@ -6,14 +6,18 @@ namespace EasyConvert2.Services
     public class TelegramUpdateHandler(
         ITelegramBotClient botClient,
         ImageProcessingService imageProcessingService,
+        VideoProcessingService videoProcessingService,
         ImageOperationCache imageOperationCache,
+        VideoOperationCache videoOperationCache,
         ScaleKeyboardFactory scaleKeyboardFactory,
         ILogger<TelegramUpdateHandler> logger,
         IWebHostEnvironment env)
     {
         private readonly ITelegramBotClient _botClient = botClient;
         private readonly ImageProcessingService _imageProcessingService = imageProcessingService;
+        private readonly VideoProcessingService _videoProcessingService = videoProcessingService;
         private readonly ImageOperationCache _imageOperationCache = imageOperationCache;
+        private readonly VideoOperationCache _videoOperationCache = videoOperationCache;
         private readonly ScaleKeyboardFactory _scaleKeyboardFactory = scaleKeyboardFactory;
         private readonly ILogger<TelegramUpdateHandler> _logger = logger;
         private readonly string _environment = env.EnvironmentName;
@@ -46,9 +50,15 @@ namespace EasyConvert2.Services
         {
             var chatId = message.Chat.Id;
             _logger.LogInformation(
-                "Image from @{Username} (ID: {UserId})",
+                "Media from @{Username} (ID: {UserId})",
                 message.From?.Username,
                 message.From?.Id);
+
+            if (_videoProcessingService.CanProcess(message))
+            {
+                await HandleVideoMessageAsync(message, cancellationToken);
+                return;
+            }
 
             var imageResult = await _imageProcessingService.PrepareImageAsync(message, cancellationToken);
             if (!imageResult.IsSuccess || imageResult.ImageBytes is null || imageResult.FileName is null)
@@ -81,6 +91,25 @@ namespace EasyConvert2.Services
             _logger.LogInformation(L("Изображение успешно пересжато и отправлено.", "Image compressed and sent."));
         }
 
+        private async Task HandleVideoMessageAsync(Message message, CancellationToken cancellationToken)
+        {
+            var chatId = message.Chat.Id;
+            var videoResult = await _videoProcessingService.PrepareVideoAsync(message, cancellationToken);
+            if (!videoResult.IsSuccess || videoResult.VideoPath is null)
+            {
+                await Reply(chatId, videoResult.ErrorMessage ?? "Не удалось обработать видео.", cancellationToken);
+                return;
+            }
+
+            var operationId = _videoOperationCache.Store(videoResult.VideoPath);
+
+            await _botClient.SendMessage(
+                chatId,
+                L("Видео получено. Сейчас доступно уменьшение 0.5x.", "Video received. 0.5x downscale is available."),
+                replyMarkup: _scaleKeyboardFactory.CreateVideo(operationId),
+                cancellationToken: cancellationToken);
+        }
+
         private async Task HandleScaleCallbackAsync(CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var chatId = callbackQuery.Message?.Chat.Id;
@@ -99,6 +128,12 @@ namespace EasyConvert2.Services
                     callbackQuery.Id,
                     text: L("Неизвестное действие.", "Unknown action."),
                     cancellationToken: cancellationToken);
+                return;
+            }
+
+            if (command.IsVideo)
+            {
+                await HandleVideoScaleCallbackAsync(chatId.Value, callbackQuery, command, cancellationToken);
                 return;
             }
 
@@ -138,6 +173,52 @@ namespace EasyConvert2.Services
                 new InputFileStream(scaledStream, scaledImageResult.FileName),
                 caption: L($"Готово: изображение {command.ScaleLabel}.", $"Done: image scaled {command.ScaleLabel}."),
                 cancellationToken: cancellationToken);
+        }
+
+        private async Task HandleVideoScaleCallbackAsync(
+            long chatId,
+            CallbackQuery callbackQuery,
+            ScaleCallbackCommand command,
+            CancellationToken cancellationToken)
+        {
+            if (!_videoOperationCache.TryGet(command.OperationId, out var sourceVideoPath) || sourceVideoPath is null)
+            {
+                var expiredMessage = L(
+                    "Срок действия видео истек. Отправьте видео еще раз.",
+                    "The video expired. Send the video again.");
+
+                await _botClient.AnswerCallbackQuery(
+                    callbackQuery.Id,
+                    text: expiredMessage,
+                    cancellationToken: cancellationToken);
+
+                await _botClient.SendMessage(chatId, expiredMessage, cancellationToken: cancellationToken);
+                return;
+            }
+
+            await _botClient.AnswerCallbackQuery(
+                callbackQuery.Id,
+                text: L("Уменьшаю видео 0.5x...", "Downscaling video 0.5x..."),
+                cancellationToken: cancellationToken);
+
+            var scaledVideoResult = await _videoProcessingService.DownscaleVideoAsync(sourceVideoPath, cancellationToken);
+            if (!scaledVideoResult.IsSuccess || scaledVideoResult.VideoPath is null || scaledVideoResult.FileName is null)
+            {
+                await _botClient.SendMessage(
+                    chatId,
+                    scaledVideoResult.ErrorMessage ?? L("Не удалось уменьшить видео.", "Could not downscale the video."),
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            await using var scaledStream = File.OpenRead(scaledVideoResult.VideoPath);
+            await _botClient.SendDocument(
+                chatId,
+                new InputFileStream(scaledStream, scaledVideoResult.FileName),
+                caption: L("Готово: видео уменьшено 0.5x.", "Done: video downscaled 0.5x."),
+                cancellationToken: cancellationToken);
+
+            _videoOperationCache.DeleteFile(scaledVideoResult.VideoPath);
         }
 
         private async Task Reply(long chatId, string message, CancellationToken token)

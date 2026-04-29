@@ -7,6 +7,7 @@ namespace EasyConvert2.Services
         private const string Scale2Action = "scale_2";
         private const string Scale4Action = "scale_4";
         private const string ScaleDownAction = "scale_down";
+        private const string VideoScaleDownAction = "video_scale_down";
 
         public InlineKeyboardMarkup Create(string operationId)
         {
@@ -17,6 +18,17 @@ namespace EasyConvert2.Services
                     InlineKeyboardButton.WithCallbackData("2x", CreateScaleCallbackData(Scale2Action, operationId)),
                     InlineKeyboardButton.WithCallbackData("4x", CreateScaleCallbackData(Scale4Action, operationId)),
                     InlineKeyboardButton.WithCallbackData("0.5x", CreateScaleCallbackData(ScaleDownAction, operationId))
+                }
+            });
+        }
+
+        public InlineKeyboardMarkup CreateVideo(string operationId)
+        {
+            return new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("0.5x", CreateScaleCallbackData(VideoScaleDownAction, operationId))
                 }
             });
         }
@@ -42,6 +54,7 @@ namespace EasyConvert2.Services
                 Scale2Action => new ScaleCallbackCommand(action, operationId, 2, "2x"),
                 Scale4Action => new ScaleCallbackCommand(action, operationId, 4, "4x"),
                 ScaleDownAction => new ScaleCallbackCommand(action, operationId, 0.5, "0.5x"),
+                VideoScaleDownAction => new ScaleCallbackCommand(action, operationId, 0.5, "0.5x", IsVideo: true),
                 _ => ScaleCallbackCommand.Empty
             };
 
@@ -56,7 +69,8 @@ namespace EasyConvert2.Services
         string Action,
         string OperationId,
         double ScaleFactor,
-        string ScaleLabel)
+        string ScaleLabel,
+        bool IsVideo = false)
     {
         public static ScaleCallbackCommand Empty { get; } = new(string.Empty, string.Empty, 0, string.Empty);
 

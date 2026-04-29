@@ -32,10 +32,13 @@ class Program
                 ////////////////////////////Custom services registration////////////////////////////////////
 
                 services.AddSingleton<IFileValidator, ImageValidator>();//image validation
+                services.AddSingleton<VideoValidator>();
                 services.AddMemoryCache();
                 services.AddSingleton<ImageOperationCache>();
+                services.AddSingleton<VideoOperationCache>();
                 services.AddSingleton<ScaleKeyboardFactory>();
                 services.AddSingleton<ImageProcessingService>();
+                services.AddSingleton<VideoProcessingService>();
                 services.AddSingleton<TelegramUpdateHandler>();
 
 
